@@ -62,9 +62,6 @@ cd sqlite_books_reviews_web_example
 
 python app.py
 
-
-Then open:
-👉 http://127.0.0.1:5000
 ---
 
 
