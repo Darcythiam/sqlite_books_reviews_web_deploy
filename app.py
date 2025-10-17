@@ -1,7 +1,46 @@
+import os, datetime
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 import sqlite3, os
 
 app = Flask(__name__)
+
+# ----- MongoDB Setup (Reviews only) -----
+load_dotenv()  # loads MONGODB_URI, etc. from .env if present
+
+MONGO_URI = os.environ.get("MONGODB_URI")
+MONGO_DB_NAME = os.environ.get("MONGODB_DB", "books_app")
+MONGO_REVIEWS_COLL = os.environ.get("MONGODB_REVIEWS_COLLECTION", "reviews")
+
+_mongo_client = None
+def get_mongo():
+    """Singleton Mongo client."""
+    global _mongo_client
+    if _mongo_client is None:
+        if not MONGO_URI:
+            raise RuntimeError("MONGODB_URI not set. Put it in .env or env vars.")
+        _mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=8000)
+        # triggers early failure if URI wrong
+        _mongo_client.admin.command("ping")
+    return _mongo_client
+
+def reviews_coll():
+    """Return the reviews collection handle."""
+    client = get_mongo()
+    return client[MONGO_DB_NAME][MONGO_REVIEWS_COLL]
+
+def _review_to_json(doc):
+    """Serialize Mongo Review doc to JSON serializable dict."""
+    return {
+        "_id": str(doc.get("_id")),
+        "book_id": doc.get("book_id"),
+        "username": doc.get("username"),
+        "rating": doc.get("rating"),
+        "review_text": doc.get("review_text"),
+        "review_date": doc.get("review_date").isoformat() if doc.get("review_date") else None,
+    }
 
 # Allow tests/seed to override the DB path via env var
 DATABASE = os.environ.get("APP_DATABASE", "db/books.db")
@@ -93,6 +132,110 @@ def search_books():
         return jsonify({"books": [dict(r) for r in rows]}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+# ---------------- Reviews: MongoDB-backed ----------------
+
+@app.route("/api/reviews", methods=["GET"])
+def list_reviews():
+    """
+    Get reviews for a given book.
+    Query params:
+      - book_id (required, int or str convertible to int)
+    Example: /api/reviews?book_id=123
+    """
+    try:
+        book_id = request.args.get("book_id")
+        if not book_id:
+            return jsonify({"error": "book_id is required"}), 400
+
+        # normalize to int (your Books table uses INTEGER ids)
+        try:
+            book_id = int(book_id)
+        except ValueError:
+            return jsonify({"error": "book_id must be an integer"}), 400
+
+        cur = reviews_coll().find(
+            {"book_id": book_id},
+            sort=[("review_date", -1), ("_id", -1)]
+        )
+        return jsonify({"reviews": [_review_to_json(d) for d in cur]}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/reviews", methods=["POST"])
+def create_review():
+    """
+    Add a new review for a book.
+    Expected JSON:
+      {
+        "book_id": 123,                # required, int
+        "username": "alice",           # required, str
+        "rating": 5,                   # optional, int 0..5
+        "review_text": "Great book!"   # optional, str
+      }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        # book_id
+        if "book_id" not in data:
+            return jsonify({"error": "book_id is required"}), 400
+        try:
+            book_id = int(data.get("book_id"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "book_id must be an integer"}), 400
+
+        # username
+        username = (data.get("username") or "").strip()
+        if not username:
+            return jsonify({"error": "username is required"}), 400
+
+        # rating (optional)
+        rating = data.get("rating")
+        if rating not in (None, ""):
+            try:
+                rating = int(rating)
+            except (TypeError, ValueError):
+                return jsonify({"error": "rating must be an integer"}), 400
+            if rating < 0 or rating > 5:
+                return jsonify({"error": "rating must be between 0 and 5"}), 400
+        else:
+            rating = None
+
+        # review_text (optional)
+        review_text = (data.get("review_text") or "").strip() or None
+
+        # assemble doc
+        doc = {
+            "book_id": book_id,
+            "username": username,
+            "rating": rating,
+            "review_text": review_text,
+            "review_date": datetime.datetime.utcnow(),
+        }
+
+        res = reviews_coll().insert_one(doc)
+        doc["_id"] = res.inserted_id
+        return jsonify({"message": "Review added", "review": _review_to_json(doc)}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/reviews/<review_id>", methods=["DELETE"])
+def delete_review(review_id):
+    """
+    Optional: delete a review by its Mongo _id for testing/demo.
+    """
+    try:
+        oid = ObjectId(review_id)
+    except Exception:
+        return jsonify({"error": "Invalid review id"}), 400
+
+    res = reviews_coll().delete_one({"_id": oid})
+    if res.deleted_count == 0:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify({"message": "Deleted"}), 200
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

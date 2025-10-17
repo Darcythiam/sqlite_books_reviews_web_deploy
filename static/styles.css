@@ -79,6 +79,47 @@ main { padding: 24px 0 60px; }
 }
 .title { font-weight: 800; line-height: 1.2; margin: 0 0 6px; font-size: 16px; }
 .meta { color: var(--muted); font-size: 13px; margin: 0; }
+/* --- Reviews panel --- */
+.reviews-panel {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255,255,255,0.12);
+}
+.reviews-form {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  grid-template-areas:
+    "user rating"
+    "text text"
+    "add  show";
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.reviews-form input[type="text"] { grid-area: user; }
+.reviews-form input[type="number"] { grid-area: rating; }
+.reviews-form textarea {
+  grid-area: text; min-height: 70px; resize: vertical;
+  background: #0b162a; color: var(--text);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px;
+}
+.reviews-form input[type="text"],
+.reviews-form input[type="number"] {
+  background: #0b162a; color: var(--text);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px;
+}
+.reviews-form button.secondary { grid-area: add; }
+.reviews-form button.ghost { grid-area: show; background: transparent; color: var(--brand); border: 1px solid rgba(255,255,255,0.12); }
+
+.reviews-list .review-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 8px;
+  margin: 6px 0;
+}
+.review-head { font-weight: 700; margin-bottom: 4px; }
+.review-text { white-space: pre-wrap; }
+.muted { color: var(--muted); font-size: 12px; }
 
 /* keep your original rule */
 #showBooksButton { margin: 20px; }
