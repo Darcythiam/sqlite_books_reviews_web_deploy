@@ -1,0 +1,85 @@
+
+---
+
+## 🧩 .gitignore
+
+```gitignore
+# Python / Flask
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.pycache/
+*.so
+
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+*.env
+*.venv
+Pipfile.lock
+
+# Databases
+*.db
+*.sqlite3
+
+# VS Code
+.vscode/
+.settings/
+
+# Pytest / Coverage
+.cache/
+.pytest_cache/
+.coverage
+nosetests.xml
+coverage.xml
+*.cover
+htmlcov/
+
+# Logs
+*.log
+logs/
+*.pid
+
+# System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Compiled Cython / bytecode
+*.c
+*.cpp
+*.obj
+*.o
+*.a
+*.dll
+*.lib
+*.exp
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# Node (if front-end scripts used)
+node_modules/
+
+# Docker
+*.pid
+*.tar
+*.bak
+*.old
+.dockerignore
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Secrets / Credentials
+.env
+.env.*
