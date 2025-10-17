@@ -55,6 +55,7 @@ This project demonstrates integration between **Flask (Python)**, **SQLite** for
 git clone https://github.com/<yourusername>/toons-flag-chase.git
 cd sqlite_books_reviews_web_example
 
+```
 ---
 
 ## Run the app
