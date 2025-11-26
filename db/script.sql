@@ -35,5 +35,9 @@ FOREIGN KEY (book_id) REFERENCES Books (book_id),
 FOREIGN KEY (author_id) REFERENCES Authors (author_id)
 );
 
-
+CREATE TABLE IF NOT EXISTS logs(
+details TEXT NOT NULL,
+message TEXT NOT NULL,
+level TEXT NOT NULL
+);
 ------------------

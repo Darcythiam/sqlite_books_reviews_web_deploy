@@ -45,6 +45,20 @@ def _review_to_json(doc):
 # Allow tests/seed to override the DB path via env var
 DATABASE = os.environ.get("APP_DATABASE", "db/books.db")
 
+def log_event(details, message, level):
+    """Log an event to the logs table."""
+    try:
+        conn = get_db()
+        conn.execute("""
+            INSERT INTO logs (details, message, level)
+            VALUES (?, ?, ?)
+        """, (details, message, level))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        #fallback: print to console
+        print(f"Logging failed: {e}")
+
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
@@ -65,8 +79,11 @@ def get_all_books():
             ORDER BY book_id DESC
         """).fetchall()
         conn.close()
+        log_event("Fetched all books", f"Returned {len(rows)} books", "INFO")
         return jsonify({"books": [dict(r) for r in rows]}), 200
     except Exception as e:
+        error_details = f"Error fetching all books: {e}"
+        log_event(error_details, "Failed to fetch books", "ERROR")
         return jsonify({"error": str(e)}), 500
 
 # Add a new book (title, author, image_url)
@@ -100,6 +117,7 @@ def add_book():
         new_id = cur.lastrowid
         conn.close()
 
+        log_event(f"Added book '{title}'", f"Book ID: {new_id}", "INFO")
         return jsonify({
             "message": "Book added successfully",
             "book": {
@@ -111,6 +129,8 @@ def add_book():
             }
         }), 201
     except Exception as e:
+        error_details = f"Error adding book: {e}"
+        log_event(error_details, "Failed to add book", "ERROR")
         return jsonify({"error": str(e)}), 500
 
 # Search by title OR author
@@ -129,8 +149,12 @@ def search_books():
             ORDER BY book_id DESC
         """, (like, like)).fetchall()
         conn.close()
+
+        log_event(f"Searched books with query '{q}'", f"Found {len(rows)} results", "INFO")
         return jsonify({"books": [dict(r) for r in rows]}), 200
     except Exception as e:
+        error_details = f"Error searching books: {e}"
+        log_event(error_details, "Failed to search books", "ERROR")
         return jsonify({"error": str(e)}), 500
     
 # ---------------- Reviews: MongoDB-backed ----------------
@@ -158,8 +182,12 @@ def list_reviews():
             {"book_id": book_id},
             sort=[("review_date", -1), ("_id", -1)]
         )
+
+        log_event(f"Fetched reviews for book_id {book_id}", "Success", "INFO")
         return jsonify({"reviews": [_review_to_json(d) for d in cur]}), 200
     except Exception as e:
+        error_details = f"Error fetching reviews: {e}"
+        log_event(error_details, "Failed to fetch reviews", "ERROR")
         return jsonify({"error": str(e)}), 500
 
 
@@ -178,10 +206,10 @@ def create_review():
     try:
         data = request.get_json(force=True) or {}
         # book_id
-        if "book_id" not in data:
+        if "book_id" not in data or data.get("book_id") is None:
             return jsonify({"error": "book_id is required"}), 400
         try:
-            book_id = int(data.get("book_id"))
+            book_id = (data.get("book_id"))
         except (TypeError, ValueError):
             return jsonify({"error": "book_id must be an integer"}), 400
 
@@ -216,8 +244,12 @@ def create_review():
 
         res = reviews_coll().insert_one(doc)
         doc["_id"] = res.inserted_id
+
+        log_event(f"Added review for book_id {book_id} by user '{username}'", "Success", "INFO")
         return jsonify({"message": "Review added", "review": _review_to_json(doc)}), 201
     except Exception as e:
+        error_details = f"Error creating review: {e}"
+        log_event(error_details, "Failed to create review", "ERROR")
         return jsonify({"error": str(e)}), 500
 
 

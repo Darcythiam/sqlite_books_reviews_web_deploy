@@ -1,0 +1,29 @@
+# ================================
+# Web Application Core
+# ================================
+Flask==3.0.3
+Werkzeug==3.0.3
+Jinja2==3.1.4
+itsdangerous==2.2.0
+
+# ================================
+# Database Drivers
+# ================================
+pymongo[srv]==4.8.0          # MongoDB Atlas connection
+python-dotenv==1.0.1         # Load .env variables
+
+# ================================
+# SQLite (standard library)
+# no external dependency needed, included with Python
+# ================================
+
+# ================================
+# Testing and Utilities
+# ================================
+pytest==8.3.3
+requests==2.32.3
+
+# ================================
+# Optional — only needed for dev tools
+# ================================
+Flask-Cors==4.0.1            # If you used CORS in app.py (optional)
